@@ -100,9 +100,11 @@ def initialize_database():
             ON messages(session_id)
         """)
 
-                connection.commit()
+        connection.commit()
 
 
+# Initialize database when the application starts.
+# This is important for Gunicorn on Render.
 initialize_database()
 
 
@@ -136,7 +138,7 @@ def get_messages(session_id, limit=40):
 
 # =========================================================
 # AI PROVIDERS
-# GEMINI FIRST, GROQ AUTOMATIC BACKUP
+# GEMINI FIRST, GROQ AUTOMATIC BACKUP, OPENROUTER THIRD
 # =========================================================
 
 def generate_with_gemini(contents):
@@ -214,7 +216,6 @@ def generate_with_groq(contents):
     return reply.strip()
 
 
-
 def generate_with_openrouter(contents):
     if not OPENROUTER_API_KEY:
         raise RuntimeError("OpenRouter API key is not configured.")
@@ -244,6 +245,7 @@ def generate_with_openrouter(contents):
             continue
 
         parts = item.get("parts", [])
+
         text_content = "\n".join(
             part.get("text", "")
             for part in parts
@@ -289,6 +291,7 @@ def generate_ai_reply(contents):
         try:
             reply = provider_function(contents)
             return reply, provider_name
+
         except Exception as error:
             app.logger.warning("%s failed: %s", provider_name, error)
             errors.append(f"{provider_name}: {error}")
@@ -1285,7 +1288,6 @@ def delete_conversation(session_id):
 # =========================================================
 
 if __name__ == "__main__":
-    initialize_database()
 
     print("=" * 50)
     print("SAMUEL AI IS STARTING")
@@ -1297,8 +1299,7 @@ if __name__ == "__main__":
     print("=" * 50)
 
     app.run(
-        host="127.0.0.1",
-        port=5000,
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000)),
         debug=False
     )
-
